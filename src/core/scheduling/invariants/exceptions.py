@@ -1,0 +1,2 @@
+class SchedulingException(Exception):
+    pass

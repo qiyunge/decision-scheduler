@@ -1,0 +1,105 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "core.domain" {
+  class Task {
+    +id: int
+    +duration: int
+    +release_time: int
+    +deadline: int?
+  }
+
+  class Resource {
+    +id: int
+    +available_time: int
+  }
+
+  class Allocation {
+    +task_id: int
+    +resource_id: int
+    +start_time: int
+    +end_time: int
+  }
+
+  class SystemState {
+    +current_time: int
+    +pending_tasks: List<Task>
+    +completed_tasks: List<Task>
+    +resources: List<Resource>
+    +allocations: List<Allocation>
+    --
+    +is_finished(): bool
+    +ready_tasks(): List<Task>
+    +next_available_time(): int
+  }
+
+  class InvariantViolation
+}
+
+package "core.policies" {
+  interface PlanningPolicy {
+    +name: str
+    +select(state: SystemState): Task
+  }
+
+  class FIFO
+  class SPT
+  class EDD
+
+  PlanningPolicy <|.. FIFO
+  PlanningPolicy <|.. SPT
+  PlanningPolicy <|.. EDD
+}
+
+package "core.planning" {
+  class Planner {
+    +plan(state: SystemState, policy: PlanningPolicy): SystemState
+    +step(state: SystemState, policy: PlanningPolicy): void
+    --
+    -select_resource(state: SystemState, task: Task): Resource
+    -allocate(state: SystemState, task: Task, resource: Resource): Allocation
+    -check_invariants(state: SystemState): void
+  }
+}
+
+package "core.simulation" {
+  class Simulator {
+    +run(tasks: List<Task>, resources: List<Resource>, policy: PlanningPolicy): SystemState
+    --
+    -init_state(tasks: List<Task>, resources: List<Resource>): SystemState
+  }
+}
+
+package "core.metrics" {
+  class Metrics {
+    +evaluate(final_state: SystemState): Dict
+  }
+}
+
+package "shared.utils" {
+  class GanttPlotter {
+    +save(allocations: List<Allocation>, path: str, title: str?): void
+  }
+}
+
+' --- Relationships ---
+SystemState o-- "0..*" Task : pending
+SystemState o-- "0..*" Task : completed
+SystemState o-- "1..*" Resource
+SystemState o-- "0..*" Allocation
+
+Allocation ..> Task : by task_id
+Allocation ..> Resource : by resource_id
+
+Planner ..> SystemState
+Planner ..> PlanningPolicy
+Planner ..> InvariantViolation
+
+Simulator ..> Planner
+Simulator ..> PlanningPolicy
+Simulator ..> SystemState
+
+Metrics ..> SystemState
+GanttPlotter ..> Allocation
+
+@enduml

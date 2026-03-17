@@ -1,0 +1,74 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+package "app\n(structural placeholder)" as APP {
+}
+
+package "core" as CORE {
+  package "domain" as DOMAIN {
+    class Task
+    class Resource
+    class Allocation
+    class SystemState
+    class InvariantViolation
+  }
+
+  package "policies" as POLICIES {
+    interface PlanningPolicy
+    class FIFO
+    class SPT
+    class EDD
+  }
+
+  package "planning" as PLANNING {
+    class Planner
+  }
+
+  package "simulation" as SIM {
+    class Simulator
+  }
+
+  package "metrics" as METRICS {
+    class Metrics
+  }
+}
+
+package "infra" as INFRA {
+  package "persistence\n(optional)" as PERSISTENCE {
+    class ResultWriter
+  }
+
+  package "storage\n(optional)" as STORAGE {
+    class TaskLoader
+  }
+}
+
+package "shared" as SHARED {
+  package "utils" as UTILS {
+    class GanttPlotter
+  }
+}
+
+' --- Allowed dependencies (arrows point to what is depended on) ---
+POLICIES ..> DOMAIN : select(state)
+PLANNING ..> DOMAIN
+PLANNING ..> POLICIES
+SIM ..> PLANNING
+SIM ..> DOMAIN
+SIM ..> POLICIES
+METRICS ..> DOMAIN
+UTILS ..> DOMAIN
+
+PERSISTENCE ..> DOMAIN : write allocations/results
+STORAGE ..> DOMAIN : load tasks/resources
+
+' app placeholder can depend on core/infra/shared later
+APP ..> SIM : (future)
+APP ..> METRICS : (future)
+APP ..> PERSISTENCE : (future)
+APP ..> STORAGE : (future)
+APP ..> UTILS : (future)
+
+@enduml
