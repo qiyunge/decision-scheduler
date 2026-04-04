@@ -64,10 +64,15 @@ class _TaskRuntime:
 
 
 @dataclass(frozen=True, slots=True)
-class TaskView:
+class TaskSnapshot:
     """
-    Read-only DTO for external consumption (facade/app/simulator).
+    Immutable domain-level snapshot of a task.
+
+    - Derived from _TaskSpec and _TaskRuntime
+    - Does not participate in state mutation
+    - Used for read-only access (simulation, metrics, visualization)
     """
+
     id: TaskId
 
     # spec (theta)

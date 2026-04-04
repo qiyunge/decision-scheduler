@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 
 from ..observations.scheduling_observation import Observation
-from core.scheduling.decisions.action import Action
+from domain.scheduling.decisions.action import Action
 
 class Policy(ABC):
     """

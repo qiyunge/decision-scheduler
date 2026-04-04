@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.scheduling.models.state import SchedulingState
+from domain.scheduling.models.state import SchedulingState
 
 
 from matplotlib import pyplot as plt

@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-from core.scheduling.models.ids import TaskId, MachineId
-from core.scheduling.models.scheduling_state import SchedulingState 
+from domain.scheduling.models.ids import TaskId, MachineId
+from domain.scheduling.models.state import SchedulingState 
 
 
 from typing import Protocol, Iterable

@@ -1,19 +1,19 @@
 from email import policy
 
-from core.scheduling.models.scheduling_state import SchedulingState
+from domain.scheduling.models.state import SchedulingState
 
 # from core.scheduling.models.state import SchedulingState
 # from core.scheduling.models.allocation import Allocation
 from shared.utils.gantt import save_gantt
-from core.scheduling.metrics.metrics import Metrics   
-from core.scheduling.models.task import TaskInit
-from core.scheduling.models.resource import MachineInit
+from domain.scheduling.metrics.metrics import Metrics   
+from domain.scheduling.models.task import TaskInit
+from domain.scheduling.models.resource import MachineInit
 
 from app.planning.policies.fifo import FIFOPolicy
 from app.planning.policies.spt  import SPTPolicy
 from app.planning.policies.edd import EDDPolicy
 from app.simulation.simulator import Simulator
-from core.scheduling.decisions.scheduling_transition import RuleBasedTransition
+from domain.scheduling.decisions.transition import RuleBasedTransition
 # from core.scheduling.transitions.event_driven_transition import EventDrivenTransition
 from app.planning.planner import Planner
 

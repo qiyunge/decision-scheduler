@@ -8,7 +8,7 @@ from typing import Protocol
 from .task import _TaskSpec, _TaskRuntime, TaskInit, TaskStatus, TaskView
 from .ids import TaskId, MachineId
 from .resource import _MachineSpec, MachineInit, MachineView
-from ..invariants.exceptions import SchedulingException
+from ..decisions.invariants.exceptions import SchedulingException
 from .mutations import TimeAdvanceRecord
 
 

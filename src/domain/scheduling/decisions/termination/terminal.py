@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from ..models.state import SchedulingState
-from ..models.task import TaskStatus
+from ...models.state import SchedulingState
+from ...models.task import TaskStatus
 
 @dataclass
 class TerminalStatus:

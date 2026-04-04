@@ -1,15 +1,15 @@
 from __future__ import annotations
 from dataclasses import dataclass
 
-from core.scheduling.decisions.action import Action
+from domain.scheduling.decisions.action import Action
 
 from ..planning.planner import Planner
-from core.scheduling.models.scheduling_state import SchedulingState
-from core.scheduling.models.task import TaskInit
-from core.scheduling.models.resource import MachineInit
+from domain.scheduling.models.state import SchedulingState
+from domain.scheduling.models.task import TaskInit
+from domain.scheduling.models.resource import MachineInit
 from ..planning.policies.base import Policy 
-from core.scheduling.transitions.transition import Transition 
-from core.scheduling.models.events import Event
+from domain.scheduling.decisions.transitions.transition import Transition 
+from domain.scheduling.models.events import Event
 @dataclass(frozen=True, slots=True)
 class StepResult:
     action: Action

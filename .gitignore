@@ -5,3 +5,5 @@ venv/
 env/
 .idea/
 *.log
+
+*.egg-info/

@@ -1,11 +1,11 @@
 
 from abc import ABC, abstractmethod
-from  ..models.state import SchedulingState
-from ..decisions.action import Action, WaitAction,DispatchAction
-from ..models.events import Event, SysFinishedEvent,TimeAdvanceEvent
+from  ...models.state import SchedulingState
+from ..action import Action, WaitAction,DispatchAction
+from ...models.events import Event, SysFinishedEvent,TimeAdvanceEvent
 
 from ..invariants.exceptions import SchedulingException
-from ..models.task import TaskStatus
+from ...models.task import TaskStatus
 
 class Transition(ABC):
     @abstractmethod

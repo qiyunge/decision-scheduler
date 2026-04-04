@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, Iterable, TypeVar, Callable,ClassVar
 
-from core.scheduling.invariants.exceptions import SchedulingException
-from core.scheduling.models.ids import TaskId
-from core.scheduling.models.task import TaskStatus
+from domain.scheduling.decisions.invariants.exceptions import SchedulingException
+from domain.scheduling.models.ids import TaskId
+from domain.scheduling.models.task import TaskStatus
 
-from core.scheduling.transitions.transition import Transition
-from core.scheduling.models.scheduling_state import SchedulingState
-from core.scheduling.decisions.action import Action, WaitAction, DispatchAction
-from core.scheduling.models.events import Event, TimeAdvanceEvent
+from domain.scheduling.decisions.transitions.transition import Transition
+from domain.scheduling.models.state import SchedulingState
+from domain.scheduling.decisions.action import Action, WaitAction, DispatchAction
+from domain.scheduling.models.events import Event, TimeAdvanceEvent
 
 
 # =========================================================

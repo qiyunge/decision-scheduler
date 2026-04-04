@@ -1,11 +1,11 @@
-from core.scheduling.invariants.exceptions import SchedulingException
-from core.scheduling.models.task import TaskStatus
+from domain.scheduling.decisions.invariants.exceptions import SchedulingException
+from domain.scheduling.models.task import TaskStatus
 
 from .transition import Transition
-from ..models.state import SchedulingState
-from ..decisions.action import Action, WaitAction,DispatchAction
-from ..models.events import Event,TimeAdvanceEvent
-from core.scheduling.decisions import action
+from ...models.state import SchedulingState
+from ..action import Action, WaitAction,DispatchAction
+from ...models.events import Event,TimeAdvanceEvent
+from domain.scheduling.decisions import action
 
 class EventDrivenTransition(Transition):
     def apply(self, state: SchedulingState, action: Action) -> list[Event]:

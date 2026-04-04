@@ -1,9 +1,9 @@
 import logging
 import json
-from core.scheduling.models.state import SchedulingState 
-from core.scheduling.decisions.observation import Observation
-from core.scheduling.decisions.action import Action
-from core.scheduling.policies import Policy
+from domain.scheduling.models.state import SchedulingState 
+from domain.scheduling.decisions.observation import Observation
+from domain.scheduling.decisions.action import Action
+from domain.scheduling.policies import Policy
 
 def setup_logging(lel =logging.INFO, log_file:str="log/engine.log"):
     logging.basicConfig(

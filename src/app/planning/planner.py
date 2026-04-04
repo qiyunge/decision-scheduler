@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from core.scheduling.decisions.action import Action, WaitAction
-from core.scheduling.models import state
+from domain.scheduling.decisions.action import Action, WaitAction
+from domain.scheduling.models import state
 
 from .observations.scheduling_observation import StateObservation
-from core.scheduling.models.resource import Resource
+from domain.scheduling.models.resource import Resource
 
-from core.scheduling.models.scheduling_state import SchedulingState
+from domain.scheduling.models.state import SchedulingState
 from .policies.base import Policy
 
 class Planner:

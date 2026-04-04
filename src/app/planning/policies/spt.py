@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from .base import Policy
 from ..observations.scheduling_observation import Observation
-from core.scheduling.decisions.action import Action, WaitAction,DispatchAction
+from domain.scheduling.decisions.action import Action, WaitAction,DispatchAction
 
 class SPTPolicy(Policy):
     '''
