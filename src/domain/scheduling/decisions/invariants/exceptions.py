@@ -1,2 +1,0 @@
-class SchedulingException(Exception):
-    pass

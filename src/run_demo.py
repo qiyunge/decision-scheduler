@@ -1,21 +1,18 @@
-from email import policy
 
-from domain.scheduling.models.state import SchedulingState
 
-# from core.scheduling.models.state import SchedulingState
-# from core.scheduling.models.allocation import Allocation
-from shared.utils.gantt import save_gantt
-from domain.scheduling.metrics.metrics import Metrics   
-from domain.scheduling.models.task import TaskInit
-from domain.scheduling.models.resource import MachineInit
+from decision_scheduler.domain.models.state import SchedulingState
 
-from app.planning.policies.fifo import FIFOPolicy
-from app.planning.policies.spt  import SPTPolicy
-from app.planning.policies.edd import EDDPolicy
-from app.simulation.simulator import Simulator
-from domain.scheduling.decisions.transition import RuleBasedTransition
-# from core.scheduling.transitions.event_driven_transition import EventDrivenTransition
-from app.planning.planner import Planner
+from decision_scheduler.infra.gantt import save_gantt
+from decision_scheduler.app.simulation.metrics.metrics import Metrics   
+from decision_scheduler.domain.models.task import TaskInit
+from decision_scheduler.domain.models.resource import MachineInit
+
+from decision_scheduler.app.policies import FIFOPolicy
+from decision_scheduler.app.policies import SPTPolicy
+from decision_scheduler.app.policies import EDDPolicy
+from decision_scheduler.app.simulation import Simulator
+from decision_scheduler.domain.dynamics.transitions import ActionDrivenTransition
+from decision_scheduler.app.planning.planners import Planner
 
 
 def demo_tasks():
@@ -39,8 +36,8 @@ def run(policy):
 
     state = SchedulingState.from_scenario(tasks, resources)
     state.debug_dump()  # Optional: print initial state for debugging
-    sim = Simulator(planner=Planner( ), transition=RuleBasedTransition())
-    final_state,_ = sim.run(state, policy)
+    sim = Simulator(state=state, planner=Planner( ), transition=ActionDrivenTransition())
+    final_state,_ = sim.run( policy)
 
     print("\n--- FINAL ---")
     print("final_state id:", id(final_state), "same?", final_state is state)

@@ -1,5 +1,5 @@
 [project]
-name = "decision_engine"
+name = "decision_scheduler"
 version = "0.1.0"
 
 [tool.setuptools.packages.find]

@@ -1,5 +1,9 @@
 {
     "python.analysis.extraPaths": [
         "./src"
-    ]
+    ],
+   
+  "editor.foldingStrategy": "indentation",
+  "editor.showFoldingControls": "always"
+
 }
