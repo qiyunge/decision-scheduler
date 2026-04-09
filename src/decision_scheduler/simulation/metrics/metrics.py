@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ....domain.models.state import SchedulingState
+from ...domain.models.state import SchedulingState
 
 class Metrics:
     """

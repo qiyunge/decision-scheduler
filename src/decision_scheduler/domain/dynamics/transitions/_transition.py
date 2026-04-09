@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 from  ...models.state import SchedulingState
 from ...models.task import TaskStatus
 from ..actions import Action, WaitAction,DispatchAction
-from ...semantics.events import DomainEvent
+from ...support.events import DomainEvent
 
-from ...invariants.exceptions import SchedulingException
+from ...support.exceptions import SchedulingException
 
 class Transition(ABC):
     @abstractmethod

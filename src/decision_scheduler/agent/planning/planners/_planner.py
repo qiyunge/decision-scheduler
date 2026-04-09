@@ -5,7 +5,7 @@ from ....domain.dynamics.actions import Action, WaitAction
 from ....domain.dynamics.observations._scheduling_observation import StateObservation
 
 from decision_scheduler.domain.models.state import SchedulingState
-from ...policies._base import Policy
+from  ....app.policies import Policy
 
 class Planner:
     """

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol, Iterable, TypeVar, Callable,ClassVar
 
-from ...invariants.exceptions import SchedulingException
+from ...support.exceptions import SchedulingException
 
 
 from transition import Transition

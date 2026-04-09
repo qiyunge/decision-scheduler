@@ -1,7 +1,7 @@
 # validators.py
 from  ..models.state import TaskInit
 from ..models.resource import MachineInit
-from .exceptions import InvalidTaskInitError
+from ..support.exceptions import InvalidTaskInitError
 
 def validate_task_init(task_init: TaskInit) -> None:
     duration = task_init["duration"]

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 
 
-from ..observations._scheduling_observation import Observation
+from ...domain.dynamics.observations._scheduling_observation import Observation
 from ...domain.dynamics.actions import Action
 
 class Policy(ABC):

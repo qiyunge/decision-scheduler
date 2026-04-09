@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ._base import Policy
-from ..observations._scheduling_observation import Observation
+from ...domain.dynamics.observations._scheduling_observation import Observation
 from ...domain.dynamics.actions import Action, WaitAction,DispatchAction
 
 class FIFOPolicy(Policy):

@@ -8,10 +8,14 @@ from typing import Protocol
 from .task import _TaskSpec, _TaskRuntime, TaskInit, TaskStatus
 from .ids import TaskId, MachineId
 from .resource import _MachineSpec, MachineInit
-from ..invariants.exceptions import SchedulingException
-from ..semantics.events import (TaskCreatedEvent,MachineCreatedEvent, 
+from ..support.exceptions import SchedulingException
+from ..support.events import (DomainEvent,DomainInitiatedEvent,DomainCompletedEvent, NaturalProcessCompletedEvent, NaturalProcessInitiatedEvent,
+                              TaskCreationInitiatedEvent,MachineCreationInitiatedEvent,
+                              TaskDispatchInitiatedEvent, TaskReleasedEvent,TimeAdvanceInitiatedEvent,
+                              
+                               TaskCreatedEvent,MachineCreatedEvent, 
                                 TaskDispatchedEvent,TimeAdvancedEvent,TaskCompletedEvent)
-from ..semantics.results import MutationResult, TaskCompletionResult, TimeAdvanceResult
+from ..support.results import  TaskCompletionResult, TimeAdvanceResult, NaturalEffects
 from ..invariants.validators import validate_task_init, validate_machine_init
 
 
@@ -300,49 +304,54 @@ class _SchedulingStateCore:
             raise SchedulingException(f"Unknown task {task_id}.")
         return rt.finish_time
 
-    # def task_view(self, task_id: TaskId) -> TaskView:
-    #     rt = self._task_runtimes.get(task_id)
-    #     spec = self._task_specs.get(task_id)
-    #     if rt is None or spec is None:
-    #         raise SchedulingException(f"Unknown task {task_id}.")
-    #     return TaskView(
-    #         id=task_id,
-    #         release_time=spec.release_time,
-    #         duration=spec.duration,
-    #         status=rt.status,
-    #         machine_id=rt.machine_id,
-    #         start_time=rt.start_time,
-    #         finish_time=rt.finish_time,
-    #         deadline=spec.deadline
-    #     )
-
-    # def machine_view(self, machine_id: MachineId) -> MachineView:
-    #     if machine_id not in self._machine_specs:
-    #         raise SchedulingException(f"Unknown machine {machine_id}.")
-    #     return MachineView(
-    #         id=machine_id,
-    #         availability_time=self._busy_until.get(machine_id, 0),
-    #         task_id=self._allocations.get(machine_id),
-    #     )
+  
 
 # endregion 3.--- public queries (facts) ---
 
 # region 4. --- public mutations (commands) ---
-    def create_task(self, task_init: TaskInit) -> MutationResult[TaskId]:
-        validate_task_init(task_init)
 
-        task_id = self._create_task(task_init)
-        self._invalidate_state()
-        return MutationResult.of(task_id, TaskCreatedEvent(time=self.current_time, task_id=task_id))
+    def complete(self, event: DomainInitiatedEvent)-> tuple[DomainCompletedEvent,...]:
+        
+        if isinstance(event, TaskCreationInitiatedEvent):
+            task_id = self._create_task(event.task_init)
+            return (TaskCreatedEvent(time=self.current_time, task_id=task_id, task_init=event.task_init),)
 
-    def create_machine(self, machine_init: MachineInit) -> MutationResult[MachineId]:
-        validate_machine_init(machine_init)
+        elif isinstance(event, MachineCreationInitiatedEvent):
+            machine_id = self._create_machine(event.machine_init)
+            return (MachineCreatedEvent(time=self.current_time, machine_id=machine_id, machine_init=event.machine_init),)   
 
-        machine_id = self._create_machine(machine_init)
-        self._invalidate_state()
-        return MutationResult.of(machine_id,MachineCreatedEvent(time=self.current_time, machine_id=machine_id))
+        elif isinstance(event, TaskDispatchInitiatedEvent):
+            self._dispatch(machine_id=event.machine_id, task_id=event.task_id)
+            return (TaskDispatchedEvent(time=self.current_time, machine_id=event.machine_id, task_id=event.task_id),)
 
+        elif isinstance(event, TimeAdvanceInitiatedEvent):
+            old_time = self._advance_time_to(event.new_time)
+            return (TimeAdvancedEvent(time=self.current_time, old_time=old_time, new_time=event.new_time),)
+        
+        elif isinstance(event, NaturalProcessInitiatedEvent):
+            released_task_ids =  event.scheduled_effects.released_task_ids
+            completed_task_ids = event.scheduled_effects.completed_task_ids
+            new_time = event.new_time
 
+            released_events = []
+            completed_events = []
+
+            self._advance_time_to(new_time) # step 1: advance time, which may trigger natural effects
+            for task_id in released_task_ids: # step 2: validate and apply releases
+                if self.task_status_of(task_id) != TaskStatus.PENDING:
+                    raise SchedulingException(
+                        f"Cannot release task {task_id} as part of natural process at time {self.current_time} "
+                        f"because its status is {self.task_status_of(task_id)}."
+                    )
+                released_events.append(TaskReleasedEvent(time=self.current_time, task_id=task_id))
+            for task_id in completed_task_ids: # step 3: validate and apply completions
+                machine_id = self._complete_task_by_task_id(task_id)
+                completed_events.append(TaskCompletedEvent(time=self.current_time, task_id=task_id, machine_id=machine_id))
+
+            return (NaturalProcessCompletedEvent(time=self.current_time, natural_effects=event.scheduled_effects, released_events=tuple(released_events), completed_events=tuple(completed_events)),)
+
+        else:
+            raise SchedulingException(f"Unknown event type: {type(event)}.")
 
 # endregion 4. --- public mutations (commands) ---
 
@@ -362,7 +371,7 @@ class _SchedulingStateCore:
     
     # --- advance time ---
 
-    def _advance_time_to(self, target_time: int) -> MutationResult[TimeAdvanceResult]:
+    def _advance_time_to(self, target_time: int) -> int:
         """
         Low-level time mutation primitive.
         Usually called by transition logic or simulator control flow.
@@ -374,16 +383,15 @@ class _SchedulingStateCore:
         if target_time < old_time:
             raise SchedulingException("Time cannot go backwards.")
         if target_time == old_time:
-            return MutationResult.of(TimeAdvanceResult(old_time=old_time, new_time=target_time))
+            return old_time
 
         self._current_time = target_time
 
         self._invalidate_state()
-        return MutationResult.of(TimeAdvanceResult(old_time=old_time, new_time=self._current_time),
-                                 TimeAdvancedEvent(time=self._current_time, old_time=old_time, new_time=self._current_time))
+        return old_time
     
     # --- complete on machine ---
-    def _complete_running_task_on_machine(self, machine_id: MachineId) -> MutationResult[TaskCompletionResult]:
+    def _complete_running_task_on_machine(self, machine_id: MachineId) -> TaskId:
         """
         Low-level task completion mutation primitive.
         Usually called by transition logic or simulator control flow when a task's completion time is reached.
@@ -406,42 +414,78 @@ class _SchedulingStateCore:
         task_id = self._allocations.pop(machine_id)
         del self._busy_until[machine_id]
 
-        self._complete_task(task_id=task_id)
+        self._unsafe_mark_task_completed(task_id=task_id)
 
         self._invalidate_state()
        
-        return MutationResult.of(TaskCompletionResult(task_id=task_id, machine_id=machine_id, completion_time=self._current_time),
-                                 TaskCompletedEvent(time=self._current_time, task_id=task_id, machine_id=machine_id))
-    
-    # --- dispatch task ---
-    def _dispatch(self, *, machine_id: MachineId, task_id: TaskId) ->MutationResult[TaskId]:
-        # core only checks structural invariants + basic facts
-        self._assert_can_dispatch(machine_id, task_id)
-        self._start_task(task_id, machine_id)
-        self._invalidate_state()
-        return MutationResult.of(task_id, 
-                                 TaskDispatchedEvent(time=self.current_time, task_id=task_id, machine_id=machine_id))
- 
-    # --- create task ---
-    def _create_task(self, task_init: TaskInit) -> TaskId:
-        task_id = self._get_next_task_id()
-
-        task_spec =  _TaskSpec(
-            duration=task_init["duration"],
-            release_time=task_init["release_time"],
-            deadline=task_init["deadline"],
-        )
-        task_runtime =  _TaskRuntime(
-            id=task_id,
-            status=TaskStatus.PENDING,
-        )
-        
-        self._task_runtimes[task_id] = task_runtime
-        self._task_specs[task_id] = task_spec
-
         return task_id
     
-    def _start_task(self, task_id: TaskId, machine_id: MachineId) -> None:
+    def _complete_task_by_task_id(self, task_id: TaskId) -> MachineId:
+        machine_id = self.machine_id_of(task_id)
+        completed_task_id = self._complete_running_task_on_machine(machine_id)
+
+        if completed_task_id != task_id:
+            raise SchedulingException(
+                f"Inconsistent state: expected task {task_id} to complete on machine "
+                f"{machine_id}, but completed task {completed_task_id}."
+            )
+        return machine_id
+    
+    # --- dispatch task ---
+    def _dispatch(self, *, machine_id: MachineId, task_id: TaskId) ->None:
+        # core only checks structural invariants + basic facts
+        
+        self._assert_can_dispatch(machine_id, task_id)
+        self._unsafe_start_task(task_id, machine_id)
+        self._invalidate_state()
+       
+    # --- create task ---
+    def _create_task(self, task_init: TaskInit) ->TaskId:
+        validate_task_init(task_init)
+
+        def create_task() -> TaskId:
+            task_id = self._get_next_task_id()
+
+            task_spec =  _TaskSpec(
+                duration=task_init["duration"],
+                release_time=task_init["release_time"],
+                deadline=task_init["deadline"],
+            )
+            task_runtime =  _TaskRuntime(
+                id=task_id,
+                status=TaskStatus.PENDING,
+            )
+            
+            self._task_runtimes[task_id] = task_runtime
+            self._task_specs[task_id] = task_spec
+
+            return task_id
+
+
+        task_id = create_task()
+
+        self._invalidate_state()
+
+        return task_id
+
+    def _create_machine(self, machine_init: MachineInit) -> MachineId:
+        validate_machine_init(machine_init)
+
+        def create_machine() -> MachineId:
+            machine_id = self._get_next_machine_id()
+            machine_spec = _MachineSpec.from_init(machine_init) 
+            self._machine_specs[machine_id] = machine_spec
+
+            return machine_id
+
+        machine_id = create_machine()
+
+        self._invalidate_state()
+        return machine_id
+
+  
+    
+    def _unsafe_start_task(self, task_id: TaskId, machine_id: MachineId) -> None:
         spec = self._task_specs[task_id]
         rt = self._task_runtimes[task_id]
 
@@ -453,7 +497,7 @@ class _SchedulingStateCore:
         self._allocations[machine_id] = task_id
         self._busy_until[machine_id] = self.current_time + spec.duration
 
-    def _complete_task(self, task_id: TaskId) -> None:
+    def _unsafe_mark_task_completed(self, task_id: TaskId) -> None:
         rt = self._task_runtimes[task_id]
         if rt.status != TaskStatus.RUNNING:
             raise SchedulingException(f"Task {task_id} is not running.")
@@ -465,12 +509,7 @@ class _SchedulingStateCore:
        
 
     # --- create machine ---
-    def _create_machine(self, machine_init: MachineInit) -> MachineId:
-        machine_id = self._get_next_machine_id()
-        machine_spec = _MachineSpec.from_init(machine_init) 
-        self._machine_specs[machine_id] = machine_spec
 
-        return machine_id
     
 
     
@@ -686,10 +725,10 @@ class SchedulingState:
         return state
 
     def _bootstrap_create_task(self, task_init: TaskInit) -> None:
-        self._state_core.create_task(task_init)
+        self._state_core._create_task(task_init)
 
     def _bootstrap_create_machine(self, machine_init: MachineInit) -> None:
-        self._state_core.create_machine(machine_init)
+        self._state_core._create_machine(machine_init)
 
     # ---- basic properties ----
     @property
@@ -713,63 +752,67 @@ class SchedulingState:
         return self._state_aux.idle_machine_ids
     
     @property
+    def machine_ids(self) -> KeysView[MachineId]:
+        return self._state_core.machine_ids
+    
+    @property
+    def task_ids(self) -> KeysView[TaskId]:
+        return self._state_core.task_ids
+    
+    @property
     def task_query(self) -> TaskQuery:
         return self._task_query
 
+    @property
+    def next_completion_time(self) -> int | None:
+        return self._state_aux.min_running_tasks_completion_time
+
+    @property
+    def next_release_time(self) -> int | None:
+        return self._state_aux.next_release_time
+
+    @property
+    def is_finished(self) -> bool:
+        return self._state_core.completed_task_count == self._state_core.total_task_count
+    
     # ---- queries ----
-    # def task_view(self, task_id: TaskId) -> TaskView:
-    #     return self._state_core.task_view(task_id)
-
-    # def machine_view(self, machine_id: MachineId) -> MachineView:
-    #     return self._state_core.machine_view(machine_id)
-
-    # def iter_task_views(self) -> Iterator[TaskView]:
-    #     for tid in tuple(self._state_core.task_ids):
-    #         yield self.task_view(tid)
-
-    # def snapshot_task_views(self) -> Mapping[TaskId, TaskView]:
-    #     core_ver = self._state_core.task_state_version
-    #     if (self._state_aux.cache_task_views is not None and
-    #         self._state_aux.cache_task_state_version == core_ver):
-    #         return self._state_aux.cache_task_views
-
-    #     task_ids = tuple(self._state_core.task_ids)
-    #     d = {tid: self.task_view(tid) for tid in task_ids}
-    #     snap = MappingProxyType(d)
-
-    #     self._state_aux.cache_task_views = snap
-    #     self._state_aux.cache_task_state_version = core_ver
-    #     return snap
-
  
     def is_task_ready(self, task_id: TaskId) -> bool:
         return (
             self._state_core.task_status_of(task_id) is TaskStatus.PENDING
             and self._state_core.task_release_time_of(task_id) <= self._state_core.current_time
         )
-
     
-    def next_completion_time(self) -> int | None:
-        return self._state_aux.min_running_tasks_completion_time
+    def natural_effects_at(self, time: int) -> NaturalEffects:
+        released: list[TaskId] = []
+        completed: list[TaskId] = []
 
-    def next_release_time(self) -> int | None:
-        return self._state_aux.next_release_time
+        for tid in self._state_core.task_ids:
+            status = self.task_query.status(tid)
 
-    def is_finished(self) -> bool:
-        return self._state_core.completed_task_count == self._state_core.total_task_count
+            if status == TaskStatus.PENDING:
+                if self.task_query.release_time(tid) == time:
+                    released.append(tid)
 
-    # ---- mutations (facade) ----
-    def _dispatch(self, *, machine_id: MachineId, task_id: TaskId) -> MutationResult[TaskId]:
-        return self._state_core._dispatch(machine_id=machine_id, task_id=task_id)
+            elif status == TaskStatus.RUNNING:
+                start_time = self.task_query.start_time(tid)
+                machine_id = self.task_query.machine_id(tid)
 
+                if (
+                    machine_id is not None
+                    and start_time is not None
+                    and start_time + self.task_query.duration(tid) == time
+                ):
+                    completed.append(tid)
 
-    def _advance_time_to(self, target_time: int) ->  MutationResult[TimeAdvanceResult]:
-        return self._state_core._advance_time_to(target_time)
-        
+        return NaturalEffects(
+            released_task_ids=tuple(released),
+            completed_task_ids=tuple(completed),
+        )
 
-    def _complete_running_task_on_machine(self, machine_id: MachineId) -> MutationResult[TaskCompletionResult]:
-        return self._state_core._complete_running_task_on_machine(machine_id)
-    
+    # --- pulic mutations (facade) ---
+    def complete(self, event: DomainInitiatedEvent) ->tuple[DomainCompletedEvent,...]:
+        return self._state_core.complete(event)
 
     
     def debug_dump(self) -> str:
